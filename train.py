@@ -11,7 +11,7 @@ from keras.optimizers import RMSprop
 
 from vaegan.models import create_models, build_graph
 from vaegan.training import fit_models
-from vaegan.data import celeba_loader, encoder_loader, decoder_loader, discriminator_loader, NUM_SAMPLES, mnist_loader
+from vaegan.data import shoes_loader, encoder_loader, decoder_loader, discriminator_loader, NUM_SAMPLES, mnist_loader
 from vaegan.callbacks import DecoderSnapshot, ModelsCheckpoint
 
 
@@ -24,6 +24,10 @@ def set_trainable(model, trainable):
 def main():
     encoder, decoder, discriminator = create_models()
     encoder_train, decoder_train, discriminator_train, vae, vaegan = build_graph(encoder, decoder, discriminator)
+    
+    encoder.load_weights('pretrained/encoder.030.h5')
+    decoder.load_weights('pretrained/decoder.030.h5')
+    discriminator.load_weights('pretrained/discriminator.030.h5')
 
     try:
         initial_epoch = int(sys.argv[1])
@@ -39,7 +43,7 @@ def main():
         discriminator.load_weights('discriminator' + suffix)
 
     batch_size = 64
-    rmsprop = RMSprop(lr=0.0003)
+    rmsprop = RMSprop(lr=0.0005)
 
     set_trainable(encoder, False)
     set_trainable(decoder, False)
@@ -63,13 +67,13 @@ def main():
 
     callbacks = [checkpoint, decoder_sampler, TensorBoard()]
 
-    epochs = 250
+    epochs = 90
 
     steps_per_epoch = NUM_SAMPLES // batch_size
 
     seed = np.random.randint(2**32 - 1)
 
-    img_loader = celeba_loader(batch_size, num_child=3, seed=seed)
+    img_loader = shoes_loader(batch_size, num_child=3, seed=seed)
     dis_loader = discriminator_loader(img_loader, seed=seed)
     dec_loader = decoder_loader(img_loader, seed=seed)
     enc_loader = encoder_loader(img_loader)
@@ -85,7 +89,7 @@ def main():
     with open('histories.pickle', 'wb') as f:
         pickle.dump(histories, f)
 
-    x = next(celeba_loader(1))
+    x = next(shoes_loader(1))
 
     x_tilde = vae.predict(x)
 

@@ -8,10 +8,12 @@ import numpy as np
 from PIL import Image
 
 
-NUM_SAMPLES = 202599
+NUM_SAMPLES = 50025
 
 proj_root = os.path.split(os.path.dirname(__file__))[0]
 images_path = os.path.join(proj_root, 'img_align_celeba_png', '*.png')
+
+shoes_images_path = os.path.join(proj_root, 'input/images', '*.jpg')
 
 
 def _load_image(f):
@@ -24,6 +26,30 @@ def _load_image(f):
 def celeba_loader(batch_size, normalize=True, num_child=4, seed=0, workers=8):
     rng = np.random.RandomState(seed)
     images = glob.glob(images_path)
+
+    with Pool(workers) as p:
+        while True:
+            rng.shuffle(images)
+            for s in range(0, len(images), batch_size):
+                e = s + batch_size
+                batch_names = images[s:e]
+                batch_images = p.map(_load_image, batch_names)
+                batch_images = np.stack(batch_images)
+
+                if normalize:
+                    batch_images = batch_images / 127.5 - 1.
+                    # To be sure
+                    batch_images = np.clip(batch_images, -1., 1.)
+
+                # Yield the same batch num_child times since the images will be consumed
+                # by num_child different child generators
+                for i in range(num_child):
+                    yield batch_images
+
+
+def shoes_loader(batch_size, normalize=True, num_child=4, seed=0, workers=8):
+    rng = np.random.RandomState(seed)
+    images = glob.glob(shoes_images_path)
 
     with Pool(workers) as p:
         while True:
